@@ -5,12 +5,22 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Trust the operating system's certificate store for HTTPS (Anthropic API, Hugging Face).
+# Python's bundled CA list does not include the certificate chain on some networks.
+# This must run before anthropic or sentence-transformers make any connection.
+import truststore
+truststore.inject_into_ssl()
+
+# Use the locally cached embedding model without checking huggingface.co on load.
+# An explicit HF_HUB_OFFLINE in the environment still takes precedence.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
 @dataclass
 class Config:
     """Configuration settings for the RAG system"""
     # Anthropic API settings
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    ANTHROPIC_MODEL: str = "claude-sonnet-4-6"  # Model for generating responses
+    ANTHROPIC_MODEL: str = "claude-sonnet-4-6"  # Model for generating responses (verified accepted by the API)
     
     # Embedding model settings
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"

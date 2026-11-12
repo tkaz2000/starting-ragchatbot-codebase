@@ -114,11 +114,15 @@ Provide only the direct answer to what was asked.
         tool_results = []
         for content_block in initial_response.content:
             if content_block.type == "tool_use":
-                tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
-                )
-                
+                try:
+                    tool_result = tool_manager.execute_tool(
+                        content_block.name,
+                        **content_block.input
+                    )
+                except Exception as e:
+                    # Report the failure to Claude instead of failing the whole request
+                    tool_result = f"Tool error: {e}"
+
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": content_block.id,
