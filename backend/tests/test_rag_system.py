@@ -114,3 +114,19 @@ def test_failed_tool_turn_does_not_leak_sources_into_the_next_query(built_rag_sy
     use_script([text_reply("Hello!")])
     _, sources = built_rag_system.query("Hi there")
     assert sources == []
+
+
+def test_sources_from_two_searches_in_one_query_are_all_returned(built_rag_system, use_script):
+    # Round 1 searches MCP; round 2 searches a different course. Both sets of citations must come back.
+    use_script([
+        tool_reply("search_course_content", {"query": "what is MCP", "course_name": "MCP"}, tool_id="toolu_a"),
+        tool_reply("search_course_content", {"query": "prompt compression basics", "course_name": "Prompt Compression"}, tool_id="toolu_b"),
+        text_reply("Both courses cover this."),
+    ])
+    answer, sources = built_rag_system.query("Compare MCP with prompt compression")
+
+    assert answer == "Both courses cover this."
+    labels = {s["label"] for s in sources}
+    assert any(label.startswith("MCP: Build Rich-Context") for label in labels)
+    assert any(label.startswith("Prompt Compression and Query Optimization") for label in labels)
+    assert len(sources) == len({(s["label"], s["url"]) for s in sources})  # no duplicates

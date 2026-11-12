@@ -99,8 +99,9 @@ class CourseSearchTool(Tool):
     def _format_results(self, results: SearchResults) -> str:
         """Format search results with course and lesson context"""
         formatted = []
-        sources = []  # Track sources for the UI: {"label": str, "url": str | None}
-        seen = set()
+        # Sources for the UI ({"label": str, "url": str | None}) accumulate across searches
+        # within one query. Duplicates are dropped by (label, url).
+        seen = {(s["label"], s["url"]) for s in self.last_sources}
         
         for doc, meta in zip(results.documents, results.metadata):
             course_title = meta.get('course_title', 'unknown')
@@ -119,12 +120,9 @@ class CourseSearchTool(Tool):
             url = self._resolve_url(course_title, lesson_num)
             if (label, url) not in seen:
                 seen.add((label, url))
-                sources.append({"label": label, "url": url})
+                self.last_sources.append({"label": label, "url": url})
             
             formatted.append(f"{header}\n{doc}")
-        
-        # Store sources for retrieval
-        self.last_sources = sources
         
         return "\n\n".join(formatted)
 
@@ -201,6 +199,10 @@ class ToolManager:
         
         return self.tools[tool_name].execute(**kwargs)
     
+    def has_tool(self, tool_name: str) -> bool:
+        """Check whether a tool with this name is registered"""
+        return tool_name in self.tools
+
     def get_last_sources(self) -> list:
         """Get sources from the last search operation"""
         # Check all tools for last_sources attribute
