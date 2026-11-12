@@ -40,10 +40,15 @@ class QueryRequest(BaseModel):
     query: str
     session_id: Optional[str] = None
 
+class Source(BaseModel):
+    """A source citation; url is None when no valid link is available"""
+    label: str
+    url: Optional[str] = None
+
 class QueryResponse(BaseModel):
     """Response model for course queries"""
     answer: str
-    sources: List[str]
+    sources: List[Source]
     session_id: str
 
 class CourseStats(BaseModel):
@@ -72,6 +77,12 @@ async def query_documents(request: QueryRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a conversation session. Idempotent: unknown IDs return deleted=false."""
+    deleted = rag_system.session_manager.delete_session(session_id)
+    return {"deleted": deleted}
 
 @app.get("/api/courses", response_model=CourseStats)
 async def get_course_stats():
@@ -116,4 +127,4 @@ class DevStaticFiles(StaticFiles):
     
     
 # Serve static files for the frontend
-app.mount("/", StaticFiles(directory="../frontend", html=True), name="static")
+app.mount("/", DevStaticFiles(directory="../frontend", html=True), name="static")

@@ -3,6 +3,8 @@ const API_URL = '/api';
 
 // Global state
 let currentSessionId = null;
+// Bumped on every new chat so responses to queries from a previous chat are discarded
+let requestGeneration = 0;
 
 // DOM elements
 let chatMessages, chatInput, sendButton, totalCourses, courseTitles;
@@ -28,7 +30,10 @@ function setupEventListeners() {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendMessage();
     });
-    
+
+    // New chat
+    document.getElementById('newChatButton').addEventListener('click', newChat);
+
     
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
@@ -45,6 +50,9 @@ function setupEventListeners() {
 async function sendMessage() {
     const query = chatInput.value.trim();
     if (!query) return;
+
+    // Remember which chat this request belongs to
+    const generation = requestGeneration;
 
     // Disable input
     chatInput.value = '';
@@ -74,7 +82,14 @@ async function sendMessage() {
         if (!response.ok) throw new Error('Query failed');
 
         const data = await response.json();
-        
+
+        // The user started a new chat while this request was in flight:
+        // drop the answer and delete the session it may have created
+        if (generation !== requestGeneration) {
+            if (data.session_id) deleteSessionOnServer(data.session_id);
+            return;
+        }
+
         // Update session ID if new
         if (!currentSessionId) {
             currentSessionId = data.session_id;
@@ -85,14 +100,45 @@ async function sendMessage() {
         addMessage(data.answer, 'assistant', data.sources);
 
     } catch (error) {
+        if (generation !== requestGeneration) return;
+
         // Replace loading message with error
         loadingMessage.remove();
         addMessage(`Error: ${error.message}`, 'assistant');
     } finally {
-        chatInput.disabled = false;
-        sendButton.disabled = false;
-        chatInput.focus();
+        // Only the chat that is still on screen should re-enable the input
+        if (generation === requestGeneration) {
+            chatInput.disabled = false;
+            sendButton.disabled = false;
+            chatInput.focus();
+        }
     }
+}
+
+// Start a fresh conversation without reloading the page
+function newChat() {
+    const oldSessionId = currentSessionId;
+
+    // Invalidate any query still in flight for the previous chat
+    requestGeneration++;
+
+    // Free the old session on the server. The UI does not wait for this.
+    if (oldSessionId) deleteSessionOnServer(oldSessionId);
+
+    // Clear the chat window and show the welcome message (also resets currentSessionId)
+    createNewSession();
+
+    // Unlock input in case a query from the old chat was still pending
+    chatInput.value = '';
+    chatInput.disabled = false;
+    sendButton.disabled = false;
+    chatInput.focus();
+}
+
+// Best-effort deletion of a backend session; failures are only logged
+function deleteSessionOnServer(sessionId) {
+    fetch(`${API_URL}/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' })
+        .catch(error => console.error('Failed to delete session:', error));
 }
 
 function createLoadingMessage() {
@@ -121,20 +167,45 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     
     let html = `<div class="message-content">${displayContent}</div>`;
     
-    if (sources && sources.length > 0) {
-        html += `
-            <details class="sources-collapsible">
-                <summary class="sources-header">Sources</summary>
-                <div class="sources-content">${sources.join(', ')}</div>
-            </details>
-        `;
-    }
-    
     messageDiv.innerHTML = html;
+    if (sources && sources.length > 0) {
+        messageDiv.appendChild(renderSources(sources));
+    }
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
     
     return messageId;
+}
+
+// Build the collapsible Sources list as DOM nodes so labels and URLs are never parsed as HTML
+function renderSources(sources) {
+    const details = document.createElement('details');
+    details.className = 'sources-collapsible';
+
+    const summary = document.createElement('summary');
+    summary.className = 'sources-header';
+    summary.textContent = 'Sources';
+    details.appendChild(summary);
+
+    const content = document.createElement('div');
+    content.className = 'sources-content';
+
+    sources.forEach((source, index) => {
+        if (index > 0) content.appendChild(document.createTextNode(', '));
+        if (source.url) {
+            const link = document.createElement('a');
+            link.href = source.url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.textContent = source.label;
+            content.appendChild(link);
+        } else {
+            content.appendChild(document.createTextNode(source.label));
+        }
+    });
+
+    details.appendChild(content);
+    return details;
 }
 
 // Helper function to escape HTML for user messages

@@ -245,6 +245,16 @@ header h1 {
     color: var(--text-secondary);
 }
 
+.sources-content a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.sources-content a:hover {
+    color: var(--primary-hover);
+    text-decoration: underline;
+}
+
 /* Markdown formatting styles */
 .message-content h1,
 .message-content h2,
@@ -475,6 +485,33 @@ header h1 {
 .stats-header::-webkit-details-marker,
 .suggested-header::-webkit-details-marker {
     display: none;
+}
+
+/* New Chat button: same type treatment as the sidebar headers */
+.new-chat-btn {
+    display: block;
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 22.4px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: left;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+    outline: none;
+    transition: color 0.2s ease;
+}
+
+.new-chat-btn:hover,
+.new-chat-btn:focus-visible {
+    color: var(--primary-color);
 }
 
 .stats-header::before,
