@@ -1,0 +1,8 @@
+# Prettier only formats frontend/. backend/ is Python and is out of scope.
+node_modules/
+backend/
+docs/
+.claude/
+.trees/
+.playwright-mcp/
+uv.lock

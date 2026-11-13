@@ -1,0 +1,14 @@
+{
+  "name": "starting-codebase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Development tooling for the RAG chatbot frontend",
+  "scripts": {
+    "format": "prettier --write \"frontend/**/*.{html,css,js}\"",
+    "format:check": "prettier --check \"frontend/**/*.{html,css,js}\"",
+    "check": "npm run format:check"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3"
+  }
+}
