@@ -14,3 +14,10 @@ dependencies = [
     "python-dotenv==1.1.1",
     "truststore>=0.10.5",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+addopts = "-ra"
+markers = [
+    "live: calls the real Anthropic API (needs network and ANTHROPIC_API_KEY; set RUN_LIVE=1)",
+]
